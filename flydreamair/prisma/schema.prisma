@@ -22,6 +22,7 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
+  bookings      Booking[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -47,6 +48,8 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+
+  @@index([userId])
 }
 
 model Session {
@@ -57,6 +60,9 @@ model Session {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([sessionToken])
 }
 
 model VerificationToken {
@@ -65,4 +71,176 @@ model VerificationToken {
   expires    DateTime
 
   @@id([identifier, token])
+
+  @@index([expires])
+}
+
+
+model Country {
+  id           Int    @id @default(autoincrement())
+  countryName  String
+
+  cities City[]
+}
+
+model City {
+  id         Int     @id @default(autoincrement())
+  cityName   String
+  countryId  Int
+  country    Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
+
+  airports Airport[]
+
+  @@index([countryId])
+}
+
+model Airport {
+  id      Int    @id @default(autoincrement())
+  cityId  Int
+  code    String @db.VarChar(3)  // IATA code, e.g. "SYD"
+  name    String
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Restrict)
+
+  // dual relations from FlightSupply
+  departures FlightSupply[] @relation("Departures")
+  arrivals   FlightSupply[] @relation("Arrivals")
+
+  @@unique([code])
+  @@index([cityId])
+}
+
+model Airline {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  flightSupplies FlightSupply[]
+}
+
+model FlightSupply {
+  id                 Int      @id @default(autoincrement())
+  flightNo           String   // e.g. "FD123"
+  airlineId          Int
+  departureTime      DateTime
+  departingAirportId Int
+  arrivingAirportId  Int
+
+  airline          Airline @relation(fields: [airlineId],          references: [id], onDelete: Restrict)
+  departingAirport Airport @relation("Departures", fields: [departingAirportId], references: [id], onDelete: Restrict)
+  arrivingAirport  Airport @relation("Arrivals",   fields: [arrivingAirportId],  references: [id], onDelete: Restrict)
+
+  seatSupplies  SeatSupply[]
+  bookedFlights BookedFlight[]
+
+  @@index([departureTime, departingAirportId, arrivingAirportId])
+}
+
+model BookingClass {
+  id        Int     @id @default(autoincrement())
+  className String  // Economy, Business, ...
+  itemOrder Int?
+
+  seatSupplies  SeatSupply[]
+  bookedFlights BookedFlight[]
+}
+
+model SeatSupply {
+  // price & capacity offered for a class on a specific flight instance
+  flightSupplyId  Int
+  bookingClassId  Int
+  noSeats         Int
+  basePrice       Decimal @db.Decimal(10, 2)
+  currency        String  @db.Char(3) // ISO 4217 e.g. "AUD"
+
+  flightSupply FlightSupply @relation(fields: [flightSupplyId], references: [id], onDelete: Cascade)
+  bookingClass BookingClass @relation(fields: [bookingClassId], references: [id], onDelete: Restrict)
+
+  @@id([flightSupplyId, bookingClassId]) // composite PK
+}
+
+
+model BookingType {
+  id       Int     @id @default(autoincrement())
+  typeName String  // One-way, Return, Multi-city...
+
+  bookings Booking[]
+}
+
+model Booking {
+  id            Int       @id @default(autoincrement())
+  userId        String?   // nullable = guest checkout allowed
+  bookingTypeId Int
+  pnr           String    @unique
+  createdAt     DateTime  @default(now())
+
+  user        User?        @relation(fields: [userId],        references: [id], onDelete: SetNull)
+  bookingType BookingType  @relation(fields: [bookingTypeId], references: [id], onDelete: Restrict)
+
+  passengers    Passenger[]
+  bookedFlights BookedFlight[]
+  payments      Payment[]
+
+  @@index([userId])
+}
+
+model Passenger {
+  id        Int      @id @default(autoincrement())
+  bookingId Int
+  fullName  String
+  dob       DateTime?
+  email     String?
+  phone     String?
+
+  booking     Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookedSeats BookedSeat[]
+
+  @@index([bookingId])
+}
+
+model BookedFlight {
+  id             Int      @id @default(autoincrement())
+  bookingId      Int
+  flightSupplyId Int
+  bookingClassId Int
+  // immutable snapshot of the price paid for this segment
+  fareAmount   Decimal @db.Decimal(10, 2)
+  fareCurrency String  @db.Char(3)
+
+  booking      Booking      @relation(fields: [bookingId],      references: [id], onDelete: Cascade)
+  flightSupply FlightSupply @relation(fields: [flightSupplyId], references: [id], onDelete: Restrict)
+  bookingClass BookingClass @relation(fields: [bookingClassId], references: [id], onDelete: Restrict)
+
+  bookedSeats BookedSeat[]
+
+  @@index([bookingId])
+  @@index([flightSupplyId])
+}
+
+model BookedSeat {
+  bookedFlightId Int
+  passengerId    Int
+  seatNo         String
+
+  bookedFlight BookedFlight @relation(fields: [bookedFlightId], references: [id], onDelete: Cascade)
+  passenger    Passenger    @relation(fields: [passengerId],    references: [id], onDelete: Cascade)
+
+  // one seat per segment, and one segment per passenger-seat
+  @@id([bookedFlightId, seatNo])
+  @@unique([bookedFlightId, passengerId])
+}
+
+
+model Payment {
+  id         Int      @id @default(autoincrement())
+  bookingId  Int
+  amount     Decimal  @db.Decimal(10, 2)
+  currency   String   @db.Char(3)
+  method     String   // e.g. CARD-MOCK, VISA, CASH
+  status     String   // PENDING/SUCCESS/FAILED/REFUNDED (could be an enum)
+  txRef      String?
+  paidAt     DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
 }
