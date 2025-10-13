@@ -1,5 +1,7 @@
+
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default async function TripsPage() {
     const session = await auth();
@@ -13,9 +15,13 @@ export default async function TripsPage() {
     }
 
     return ( 
-    <div className="space-y-6 container mx-auto px-4 py-8">
-        <h1> Dashboard</h1>
-        <Button>New Trip</Button>
+    <div className="max-w-lg mx-auto mt-10">
+        <Card>
+            <CardHeader>
+                NewFlight
+            </CardHeader>
+            
+        </Card>
     </div>
     );
 }
