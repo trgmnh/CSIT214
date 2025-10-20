@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ type Flight = {
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [flights, setFlights] = useState<Flight[]>([]);
   const [returnFlights, setReturnFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +112,52 @@ export default function SearchPage() {
   });
 
   const totalPassengers = parseInt(adults) + parseInt(children) + parseInt(infants);
+
+  const handleFlightSelection = (flight: Flight, isReturn: boolean = false) => {
+    // Create flight data object to pass to booking page
+    const flightData = {
+      flightId: flight.id,
+      airline: flight.airline,
+      flightNumber: flight.flightNumber,
+      departure: {
+        airport: flight.departure.airport,
+        city: flight.departure.city,
+        time: flight.departure.time,
+        date: flight.departure.date,
+      },
+      arrival: {
+        airport: flight.arrival.airport,
+        city: flight.arrival.city,
+        time: flight.arrival.time,
+        date: flight.arrival.date,
+      },
+      duration: flight.duration,
+      price: flight.price,
+      cabin: flight.cabin,
+      stops: flight.stops,
+      availableSeats: flight.availableSeats,
+      isReturn,
+    };
+
+    // Create booking data object
+    const bookingData = {
+      tripType,
+      totalPassengers,
+      adults,
+      children,
+      infants,
+      cabin,
+      departureDate,
+      returnDate: returnDate || null,
+      from,
+      to,
+      selectedFlight: flightData,
+    };
+
+    // Encode the data and redirect to booking page
+    const encodedData = encodeURIComponent(JSON.stringify(bookingData));
+    router.push(`/booking?data=${encodedData}`);
+  };
 
   if (loading) {
     return (
@@ -250,7 +297,10 @@ export default function SearchPage() {
                           ${flight.price}
                         </div>
                         <div className="text-sm text-gray-600 mb-4">per person</div>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2">
+                        <Button 
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                          onClick={() => handleFlightSelection(flight, false)}
+                        >
                           Select
                         </Button>
                       </div>
@@ -316,7 +366,10 @@ export default function SearchPage() {
                           ${flight.price}
                         </div>
                         <div className="text-sm text-gray-600 mb-4">per person</div>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2">
+                        <Button 
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                          onClick={() => handleFlightSelection(flight, true)}
+                        >
                           Select
                         </Button>
                       </div>
