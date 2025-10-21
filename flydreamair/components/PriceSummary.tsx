@@ -6,12 +6,39 @@ import { Button } from "@/components/ui/button";
 type PriceSummaryProps = {
   basePrice: number;
   taxes: number;
-  total: number;
   selectedSeats: string[];
+  selectedMeal: string;
+  selectedBaggage: string;
+  travelInsurance: boolean;
   onContinue: () => void;
 };
 
-export default function PriceSummary({ basePrice, taxes, total, selectedSeats, onContinue }: PriceSummaryProps) {
+export default function PriceSummary({ basePrice, taxes, selectedSeats, selectedMeal, selectedBaggage, travelInsurance, onContinue }: PriceSummaryProps) {
+  // Calculate add-on costs
+  const getMealCost = () => {
+    switch (selectedMeal) {
+      case 'dietary': return 35;
+      case 'premium': return 45;
+      default: return 0;
+    }
+  };
+
+  const getBaggageCost = () => {
+    switch (selectedBaggage) {
+      case 'extra': return 80;
+      case 'premium': return 150;
+      default: return 0;
+    }
+  };
+
+  const getInsuranceCost = () => {
+    return travelInsurance ? 75 : 0;
+  };
+
+  const mealCost = getMealCost();
+  const baggageCost = getBaggageCost();
+  const insuranceCost = getInsuranceCost();
+  const total = basePrice + taxes + mealCost + baggageCost + insuranceCost;
   return (
     <Card className="sticky top-4">
       <CardHeader>
@@ -28,6 +55,27 @@ export default function PriceSummary({ basePrice, taxes, total, selectedSeats, o
             <span className="text-gray-600">Taxes & Fees</span>
             <span className="font-medium">AUD {taxes}</span>
           </div>
+          
+          {/* Add-ons */}
+          {mealCost > 0 && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Meal Selection</span>
+              <span className="font-medium">AUD {mealCost}</span>
+            </div>
+          )}
+          {baggageCost > 0 && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Baggage Upgrade</span>
+              <span className="font-medium">AUD {baggageCost}</span>
+            </div>
+          )}
+          {insuranceCost > 0 && (
+            <div className="flex justify-between">
+              <span className="text-gray-600">Travel Insurance</span>
+              <span className="font-medium">AUD {insuranceCost}</span>
+            </div>
+          )}
+          
           <div className="border-t pt-2">
             <div className="flex justify-between text-lg font-bold">
               <span>Total</span>

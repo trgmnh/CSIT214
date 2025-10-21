@@ -7,10 +7,10 @@ export async function POST(request: NextRequest) {
     
     // Add booking type based on trip type
     const tripType = formData.get("trip_type") as string;
-    let bookingTypeId = 1; // Default to one-way
+    let bookingTypeId = 2; // Default to one-way
     
     if (tripType === "return") {
-      bookingTypeId = 2; // Return trip
+      bookingTypeId = 1; // Return trip
     } else if (tripType === "multi-city") {
       bookingTypeId = 3; // Multi-city trip
     }
@@ -23,8 +23,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
     
-    // Redirect to a success page or trips page
-    return NextResponse.redirect(new URL("/trips", request.url));
+    // Redirect to a success page with booking ID
+    if (result?.bookingId) {
+      const confirmUrl = new URL("/confirm", request.url);
+      confirmUrl.searchParams.set("bookingId", result.bookingId.toString());
+      return NextResponse.redirect(confirmUrl);
+    }
+    
+    return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
     
   } catch (error) {
     console.error("Error creating booking:", error);
