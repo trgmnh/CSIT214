@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "test": "npx jest --testPathPatterns=\"components|confirm\" --verbose",
+    "test:components": "npx jest --testPathPatterns=components --verbose",
+    "test:pages": "npx jest --testPathPatterns=confirm --verbose",
+    "test:coverage": "npx jest --testPathPatterns=\"components|confirm\" --coverage",
+    "test:watch": "npx jest --testPathPatterns=\"components|confirm\" --watch"
+  }
+}
